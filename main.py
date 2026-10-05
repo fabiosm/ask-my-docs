@@ -1,21 +1,41 @@
 import os
+import sentry_sdk
 from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile
 from fastapi.responses import StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
 from openai import OpenAI
 
 from rag import chunk_text, extract_text, save_chunks, search
 
 load_dotenv()
+
+sentry_sdk.init(
+  dsn=os.getenv("SENTRY_DSN"),
+  traces_sample_rate=1.0
+)
+
 client = OpenAI(
   api_key=os.getenv("GEMINI_API_KEY"),
   base_url=os.getenv("GEMINI_BASE_URL")
 )
-app = FastAPI(title="Ask My Docs", description="Ask questions about your documents using OpenAI's API.", version="1.0.0")
+
+app = FastAPI(
+  title="Ask My Docs",
+  description="Ask questions about your documents using an LLM (Gemini) with RAG over your uploaded PDFs.",
+  version="1.0.0"
+)
+
+app.add_middleware(
+  CORSMiddleware,
+  allow_origins=["http://localhost:5173"],
+  allow_methods=["*"],
+  allow_headers=["*"],
+)
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-@app.post("/ask")
+@app.get("/ask")
 def ask(question: str):
   context = "\n\n".join(search(question, DATABASE_URL))
   stream = client.chat.completions.create(
