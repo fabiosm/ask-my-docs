@@ -1,0 +1,20 @@
+name: CI
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GEMINI_API_KEY: dummy-for-ci
+      GEMINI_BASE_URL: https://generativelanguage.googleapis.com/v1beta/openai/
+      GEMINI_MODEL_NAME: gemini-3.8-flash
+      DATABASE_URL: postgresql://dummy:dummy@dummy/dummy
+      SENTRY_DSN: ""
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r requirements.txt pytest httpx
+      - run: pytest tests/ -v
