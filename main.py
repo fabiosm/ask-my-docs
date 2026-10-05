@@ -4,7 +4,8 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from openai import OpenAI
+from openai import OpenAI, RateLimitError
+from fastapi.responses import JSONResponse
 
 from rag import chunk_text, extract_text, save_chunks, search
 
@@ -30,11 +31,26 @@ app.add_middleware(
   CORSMiddleware,
   allow_origins=[
     "http://localhost:5173",
-    "https://ask-my-docs.vercel.app"
+    "https://ask-my-docs-eight.vercel.app"
   ],
   allow_methods=["*"],
   allow_headers=["*"],
 )
+
+@app.exception_handler(RateLimitError)
+async def rate_limit_handler(request, exc):
+  return JSONResponse(
+    status_code=429,
+    content={"detail": "AI quota reached — please try again later."}
+  )
+
+@app.exception_handler(Exception)
+async def generic_handler(request, exc):
+  sentry_sdk.capture_exception(exc)
+  return JSONResponse(
+    status_code=500,
+    content={"detail": "Unexpected error — it was logged and will be investigated."}
+  )
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
